@@ -5,7 +5,7 @@ import (
 	"time"
 
 	// module under test
-	"github.com/hoodnoah/spiceledger/internal/accounting"
+	"github.com/hoodnoah/ghoam/internal/accounting"
 )
 
 func TestTransactionBalanced(t *testing.T) {
