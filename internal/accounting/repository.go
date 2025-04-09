@@ -2,6 +2,11 @@ package accounting
 
 import "context"
 
+type AccountGroupRepository interface {
+	Save(ctx context.Context, group *AccountGroup) error
+	GetByName(ctx context.Context, name string) (AccountGroup, error)
+}
+
 type AccountRepository interface {
 	Save(ctx context.Context, account *Account) error
 	GetAll(ctx context.Context) ([]*Account, error)

@@ -6,7 +6,6 @@ import (
 	"database/sql"
 
 	// external
-	"github.com/hoodnoah/ghoam/internal/persistence/sqlite/migrate"
 	_ "github.com/mattn/go-sqlite3" // sqlite driver
 
 	// internal
@@ -16,38 +15,6 @@ import (
 type accountRepo struct {
 	db *sql.DB
 }
-
-// type journalEntryRepo struct {
-// 	db *sql.DB
-// }
-
-type Repositories struct {
-	Accounts accounting.AccountRepository
-	// JournalEntries accounting.JournalEntryRepository
-}
-
-// New opens/creates the DB, runs migrations, enables FK checks, and returns repositories
-func New(path string) (*Repositories, error) {
-	db, err := sql.Open("sqlite3", path)
-	if err != nil {
-		return nil, err
-	}
-
-	if _, err := db.Exec("PRAGMA foreign_keys = ON;"); err != nil {
-		return nil, err
-	}
-
-	if err := migrate.Up(db); err != nil {
-		return nil, err
-	}
-
-	return &Repositories{
-		Accounts: &accountRepo{db: db},
-		// JournalEntries: &journalEntryRepo{db: db},
-	}, nil
-}
-
-// accountRepo implementation
 
 // Save inserts or updates an account in the database.
 // More or less an upsert.
