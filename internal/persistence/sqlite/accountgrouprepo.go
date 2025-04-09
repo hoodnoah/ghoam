@@ -65,7 +65,7 @@ func (r *accountGroupRepo) Save(ctx context.Context, group *accounting.AccountGr
 
 	// check if the group exists already
 	extantGroup, err := r.GetByName(ctx, group.Name)
-	if !accounting.IsGroupNotFound(err) {
+	if err != nil && !accounting.IsGroupNotFound(err) {
 		return err
 	}
 
@@ -85,4 +85,41 @@ func (r *accountGroupRepo) Save(ctx context.Context, group *accounting.AccountGr
 	)
 
 	return err
+}
+
+// Gets all account groups
+func (r *accountGroupRepo) GetAll(ctx context.Context) ([]*accounting.AccountGroup, error) {
+	const query = `
+		SELECT name, parent_name, display_after, is_immutable
+		FROM account_groups;
+	`
+
+	rows, err := r.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+
+	var groups []*accounting.AccountGroup
+
+	for rows.Next() {
+		var group accounting.AccountGroup
+
+		if err := rows.Scan(
+			&group.Name,
+			&group.ParentName,
+			&group.DisplayAfter,
+			&group.IsImmutable,
+		); err != nil {
+			return nil, err
+		}
+
+		groups = append(groups, &group)
+	}
+
+	// sort accountGroups in-place
+	if err := accounting.SortAccountGroupsInPlace(groups); err != nil {
+		return nil, err
+	}
+
+	return groups, nil
 }

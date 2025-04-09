@@ -5,6 +5,7 @@ import "context"
 type AccountGroupRepository interface {
 	Save(ctx context.Context, group *AccountGroup) error
 	GetByName(ctx context.Context, name string) (AccountGroup, error)
+	GetAll(ctx context.Context) ([]*AccountGroup, error)
 }
 
 type AccountRepository interface {
