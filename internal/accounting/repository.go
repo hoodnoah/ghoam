@@ -4,6 +4,7 @@ import "context"
 
 type AccountRepository interface {
 	Save(ctx context.Context, account *Account) error
+	GetAll(ctx context.Context) ([]*Account, error)
 	// ByID(ctx context.Context, id string) (Account, error)
 	// ListByGroup(ctx context.Context, groupID string) ([]Account, error)
 }

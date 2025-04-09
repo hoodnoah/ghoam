@@ -78,3 +78,38 @@ func (r *accountRepo) Save(ctx context.Context, account *accounting.Account) err
 
 	return err
 }
+
+// Retrieves all accounts
+func (r *accountRepo) GetAll(ctx context.Context) ([]*accounting.Account, error) {
+	const query = `
+		SELECT id, name, parent_group_id, account_type_id, display_after, normal_balance
+		FROM accounts
+		ORDER BY display_after, name;
+	`
+
+	rows, err := r.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var accounts []*accounting.Account
+
+	for rows.Next() {
+		var account accounting.Account
+		if err := rows.Scan(
+			&account.ID,
+			&account.Name,
+			&account.ParentGroupID,
+			&account.AccountType,
+			&account.DisplayAfter,
+			&account.NormalBalance,
+		); err != nil {
+			return nil, err
+		}
+
+		accounts = append(accounts, &account)
+	}
+
+	return accounts, nil
+}
