@@ -212,3 +212,56 @@ func TestAccountRepo_GetAll(t *testing.T) {
 		}
 	})
 }
+
+func TestAccountRepo_GetByName(t *testing.T) {
+	t.Run("retrieves a single account by name", func(t *testing.T) {
+		ctx := context.Background()
+
+		// Step 1: Create in-memory SQLite DB using our migration
+		repos, err := New(":memory:")
+		if err != nil {
+			t.Fatalf("failed to create in-memory SQLite DB with error %v", err)
+		}
+
+		// Step 2: Define an account
+		account := &accounting.Account{
+			Name:            "Institution Bank X1234",
+			ParentGroupName: "Assets",
+			AccountType:     accounting.Asset,
+			NormalBalance:   accounting.DebitNormal,
+			DisplayAfter:    sql.NullString{},
+		}
+
+		// Step 3: save the account
+		if err := repos.Accounts.Save(ctx, account); err != nil {
+			t.Fatalf("failed to save account with error %v", err)
+		}
+
+		// Step 4: get the account by name
+		accountRetrieved, err := repos.Accounts.ByName(ctx, account.Name)
+		if err != nil {
+			t.Fatalf("failed to get account by name with error %v", err)
+		}
+
+		if accountRetrieved.Name != account.Name {
+			t.Fatalf("expected account name %s, got %s", account.Name, accountRetrieved.Name)
+		}
+	})
+
+	t.Run("returns a specific error if the account is not found", func(t *testing.T) {
+		ctx := context.Background()
+
+		// Step 1: Create in-memory SQLite DB using our migration
+		repos, err := New(":memory:")
+		if err != nil {
+			t.Fatalf("failed to create in-memory SQLite DB with error %v", err)
+		}
+
+		// Step 2: try and find an account
+		_, err = repos.Accounts.ByName(ctx, "Nonexistent Account")
+
+		if !accounting.IsAccountNotFound(err) {
+			t.Fatalf("expected account not found error, got %v", err)
+		}
+	})
+}

@@ -115,3 +115,25 @@ func (r *accountRepo) GetAll(ctx context.Context) ([]*accounting.Account, error)
 
 	return accounts, nil
 }
+
+// Retrieves an account by name
+//
+// Returns ErrAccountNotFound if the account does not exist.
+func (r *accountRepo) ByName(ctx context.Context, name string) (accounting.Account, error) {
+	const query = `
+		SELECT name, parent_group_name, account_type, display_after, normal_balance
+		FROM accounts
+		WHERE name = ?;
+	`
+
+	var account accounting.Account
+	err := r.db.QueryRowContext(ctx, query, name).Scan(&account.Name, &account.ParentGroupName, &account.AccountType, &account.DisplayAfter, &account.NormalBalance)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return accounting.Account{}, &accounting.ErrAccountNotFound{Name: name}
+		}
+		return accounting.Account{}, err
+	}
+
+	return account, nil
+}
