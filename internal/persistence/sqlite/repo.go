@@ -54,13 +54,12 @@ func New(path string) (*Repositories, error) {
 func (r *accountRepo) Save(ctx context.Context, account *accounting.Account) error {
 	const query = `
 		INSERT INTO accounts
-			(id, name, parent_group_id, account_type_id, display_after, normal_balance)
+			(name, parent_group_name, account_type, display_after, normal_balance)
 	  VALUES
-			(?, ?, ?, ?, ?, ?)
-		ON CONFLICT(id) DO UPDATE SET
-			name = excluded.name,
-			parent_group_id = excluded.parent_group_id,
-			account_type_id = excluded.account_type_id,
+			(?, ?, ?, ?, ?)
+		ON CONFLICT(name) DO UPDATE SET
+			parent_group_name = excluded.parent_group_name,
+			account_type = excluded.account_type,
 			display_after = excluded.display_after,
 			normal_balance = excluded.normal_balance;
 	`
@@ -68,9 +67,8 @@ func (r *accountRepo) Save(ctx context.Context, account *accounting.Account) err
 	_, err := r.db.ExecContext(
 		ctx,
 		query,
-		account.ID,
 		account.Name,
-		account.ParentGroupID,
+		account.ParentGroupName,
 		account.AccountType,
 		account.DisplayAfter,
 		account.NormalBalance,
@@ -82,9 +80,9 @@ func (r *accountRepo) Save(ctx context.Context, account *accounting.Account) err
 // Retrieves all accounts
 func (r *accountRepo) GetAll(ctx context.Context) ([]*accounting.Account, error) {
 	const query = `
-		SELECT id, name, parent_group_id, account_type_id, display_after, normal_balance
+		SELECT name, parent_group_name, account_type, display_after, normal_balance
 		FROM accounts
-		ORDER BY display_after, name;
+		ORDER BY name;
 	`
 
 	rows, err := r.db.QueryContext(ctx, query)
@@ -98,9 +96,8 @@ func (r *accountRepo) GetAll(ctx context.Context) ([]*accounting.Account, error)
 	for rows.Next() {
 		var account accounting.Account
 		if err := rows.Scan(
-			&account.ID,
 			&account.Name,
-			&account.ParentGroupID,
+			&account.ParentGroupName,
 			&account.AccountType,
 			&account.DisplayAfter,
 			&account.NormalBalance,
@@ -109,6 +106,11 @@ func (r *accountRepo) GetAll(ctx context.Context) ([]*accounting.Account, error)
 		}
 
 		accounts = append(accounts, &account)
+	}
+
+	// sort accounts in-place
+	if err := accounting.SortAccountsInPlace(accounts); err != nil {
+		return nil, err
 	}
 
 	return accounts, nil

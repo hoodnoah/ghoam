@@ -25,12 +25,11 @@ func TestAccountRepo_Save(t *testing.T) {
 
 		// Step 2: Define an account
 		account := &accounting.Account{
-			ID:            "institution bank X1234",
-			Name:          "Institution Bank X1234",
-			ParentGroupID: "assets",
-			AccountType:   accounting.Asset,
-			NormalBalance: accounting.DebitNormal,
-			DisplayAfter:  sql.NullString{},
+			Name:            "Institution Bank X1234",
+			ParentGroupName: "Assets",
+			AccountType:     accounting.Asset,
+			NormalBalance:   accounting.DebitNormal,
+			DisplayAfter:    sql.NullString{},
 		}
 
 		// Step 3: save the account
@@ -40,7 +39,7 @@ func TestAccountRepo_Save(t *testing.T) {
 
 		// Step 4: verify the account was saved
 		var name string
-		err = repos.Accounts.(*accountRepo).db.QueryRowContext(ctx, `SELECT name FROM accounts WHERE id = ?`, account.ID).Scan(&name)
+		err = repos.Accounts.(*accountRepo).db.QueryRowContext(ctx, `SELECT name FROM accounts WHERE name = ?`, account.Name).Scan(&name)
 		if err != nil {
 			t.Fatalf("failed to query account with error %v", err)
 		}
@@ -61,12 +60,11 @@ func TestAccountRepo_Save(t *testing.T) {
 
 		// Step 2: Define an account
 		account := &accounting.Account{
-			ID:            "institution bank X1234",
-			Name:          "Institution Bank X1234",
-			ParentGroupID: "assets",
-			AccountType:   accounting.Asset,
-			NormalBalance: accounting.DebitNormal,
-			DisplayAfter:  sql.NullString{},
+			Name:            "Institution Bank X1234",
+			ParentGroupName: "Assets",
+			AccountType:     accounting.Asset,
+			NormalBalance:   accounting.DebitNormal,
+			DisplayAfter:    sql.NullString{},
 		}
 
 		// Step 3: save the account
@@ -75,19 +73,19 @@ func TestAccountRepo_Save(t *testing.T) {
 		}
 
 		// Step 4: update the account (rename)
-		account.Name = "Institution Bank X1234 Sweep"
+		account.AccountType = accounting.Liability
 		if err := repos.Accounts.Save(ctx, account); err != nil {
 			t.Fatalf("failed to update account with error %v", err)
 		}
 
 		// Step 5: Verify the account was updated
-		var name string
-		err = repos.Accounts.(*accountRepo).db.QueryRowContext(ctx, `SELECT name FROM accounts WHERE id = ?`, account.ID).Scan(&name)
+		var accountType string
+		err = repos.Accounts.(*accountRepo).db.QueryRowContext(ctx, `SELECT account_type FROM accounts WHERE name = ?`, account.Name).Scan(&accountType)
 		if err != nil {
 			t.Fatalf("failed to query account with error %v", err)
 		}
-		if name != account.Name {
-			t.Fatalf("expected account name %s, got %s", account.Name, name)
+		if accountType != string(account.AccountType) {
+			t.Fatalf("expected account type %s, got %s", account.AccountType, accountType)
 		}
 	})
 }
@@ -105,35 +103,32 @@ func TestAccountRepo_GetAll(t *testing.T) {
 		// Step 2: Define a list of accounts
 		accounts := []*accounting.Account{
 			{
-				ID:            "institution bank X1234",
-				Name:          "Institution Bank X1234",
-				ParentGroupID: "assets",
-				AccountType:   accounting.Asset,
-				NormalBalance: accounting.DebitNormal,
-				DisplayAfter:  sql.NullString{},
+				Name:            "Institution Bank X1234",
+				ParentGroupName: "Assets",
+				AccountType:     accounting.Asset,
+				NormalBalance:   accounting.DebitNormal,
+				DisplayAfter:    sql.NullString{},
 			},
 			{
-				ID:            "accounts receivable",
-				Name:          "Accounts Receivable",
-				ParentGroupID: "assets",
-				AccountType:   accounting.Asset,
-				NormalBalance: accounting.DebitNormal,
-				DisplayAfter:  sql.NullString{String: "institution bank X1234", Valid: true},
+				Name:            "Accounts Receivable",
+				ParentGroupName: "Assets",
+				AccountType:     accounting.Asset,
+				NormalBalance:   accounting.DebitNormal,
+				DisplayAfter:    sql.NullString{String: "Institution Bank X1234", Valid: true},
 			},
 			{
-				ID:            "accounts payable",
-				Name:          "Accounts Payable",
-				ParentGroupID: "liabilities",
-				AccountType:   accounting.Liability,
-				NormalBalance: accounting.CreditNormal,
-				DisplayAfter:  sql.NullString{String: "accounts receivable", Valid: true},
+				Name:            "Accounts Payable",
+				ParentGroupName: "Liabilities",
+				AccountType:     accounting.Liability,
+				NormalBalance:   accounting.CreditNormal,
+				DisplayAfter:    sql.NullString{String: "Accounts Receivable", Valid: true},
 			},
 		}
 
 		// insert accounts
 		for _, account := range accounts {
 			if err := repos.Accounts.Save(ctx, account); err != nil {
-				t.Fatalf("failed to save account %s with error %v", account.ID, err)
+				t.Fatalf("failed to save account %s with error %v", account.Name, err)
 			}
 		}
 
@@ -150,73 +145,70 @@ func TestAccountRepo_GetAll(t *testing.T) {
 
 		for _, account := range accounts {
 			if !slices.ContainsFunc(accountsRetrieved, func(a *accounting.Account) bool {
-				return account.ID == a.ID
+				return account.Name == a.Name
 			}) {
-				t.Fatalf("expected account %s to be in the list", account.ID)
+				t.Fatalf("expected account %s to be in the list", account.Name)
 			}
 		}
 
 	})
 
-	// t.Run("retrieves all accounts in correct order", func(t *testing.T) {
-	// 	ctx := context.Background()
+	t.Run("retrieves all accounts in correct order", func(t *testing.T) {
+		ctx := context.Background()
 
-	// 	// Step 1: Create in-memory SQLite DB using our migration
-	// 	repos, err := New(":memory:")
-	// 	if err != nil {
-	// 		t.Fatalf("failed to create in-memory SQLite DB with error %v", err)
-	// 	}
+		// Step 1: Create in-memory SQLite DB using our migration
+		repos, err := New(":memory:")
+		if err != nil {
+			t.Fatalf("failed to create in-memory SQLite DB with error %v", err)
+		}
 
-	// 	// Step 2: Define a list of accounts
-	// 	accounts := []*accounting.Account{
-	// 		{
-	// 			ID:            "institution bank X1234",
-	// 			Name:          "Institution Bank X1234",
-	// 			ParentGroupID: "assets",
-	// 			AccountType:   accounting.Asset,
-	// 			NormalBalance: accounting.DebitNormal,
-	// 			DisplayAfter:  sql.NullString{},
-	// 		},
-	// 		{
-	// 			ID:            "accounts receivable",
-	// 			Name:          "Accounts Receivable",
-	// 			ParentGroupID: "assets",
-	// 			AccountType:   accounting.Asset,
-	// 			NormalBalance: accounting.DebitNormal,
-	// 			DisplayAfter:  sql.NullString{String: "institution bank X1234", Valid: true},
-	// 		},
-	// 		{
-	// 			ID:            "accounts payable",
-	// 			Name:          "Accounts Payable",
-	// 			ParentGroupID: "liabilities",
-	// 			AccountType:   accounting.Liability,
-	// 			NormalBalance: accounting.CreditNormal,
-	// 			DisplayAfter:  sql.NullString{String: "accounts receivable", Valid: true},
-	// 		},
-	// 	}
+		// Step 2: Define a list of accounts
+		accounts := []*accounting.Account{
+			{
+				Name:            "Institution Bank X1234",
+				ParentGroupName: "Assets",
+				AccountType:     accounting.Asset,
+				NormalBalance:   accounting.DebitNormal,
+				DisplayAfter:    sql.NullString{},
+			},
+			{
+				Name:            "Accounts Receivable",
+				ParentGroupName: "Assets",
+				AccountType:     accounting.Asset,
+				NormalBalance:   accounting.DebitNormal,
+				DisplayAfter:    sql.NullString{String: "Institution Bank X1234", Valid: true},
+			},
+			{
+				Name:            "Accounts Payable",
+				ParentGroupName: "Liabilities",
+				AccountType:     accounting.Liability,
+				NormalBalance:   accounting.CreditNormal,
+				DisplayAfter:    sql.NullString{String: "Accounts Receivable", Valid: true},
+			},
+		}
 
-	// 	// insert accounts
-	// 	for _, account := range accounts {
-	// 		if err := repos.Accounts.Save(ctx, account); err != nil {
-	// 			t.Fatalf("failed to save account %s with error %v", account.ID, err)
-	// 		}
-	// 	}
+		// insert accounts
+		for _, account := range accounts {
+			if err := repos.Accounts.Save(ctx, account); err != nil {
+				t.Fatalf("failed to save account %s with error %v", account.Name, err)
+			}
+		}
 
-	// 	// get accounts
-	// 	accountsRetrieved, err := repos.Accounts.GetAll(ctx)
-	// 	if err != nil {
-	// 		t.Fatalf("failed to get all accounts with error %v", err)
-	// 	}
+		// get accounts
+		accountsRetrieved, err := repos.Accounts.GetAll(ctx)
+		if err != nil {
+			t.Fatalf("failed to get all accounts with error %v", err)
+		}
 
-	// 	// Step 3: Verify the accounts were retrieved
-	// 	if len(accountsRetrieved) != len(accounts) {
-	// 		t.Fatalf("expected %d accounts, got %d", len(accounts), len(accountsRetrieved))
-	// 	}
+		// Step 3: Verify the accounts were retrieved
+		if len(accountsRetrieved) != len(accounts) {
+			t.Fatalf("expected %d accounts, got %d", len(accounts), len(accountsRetrieved))
+		}
 
-	// 	for i, account := range accounts {
-	// 		if accountsRetrieved[i].ID != account.ID {
-	// 			t.Fatalf("expected account %s at index %d, got %s", account.ID, i, accountsRetrieved[i].ID)
-	// 		}
-	// 	}
-	// })
+		for i, account := range accounts {
+			if accountsRetrieved[i].Name != account.Name {
+				t.Fatalf("expected account %s at index %d, got %s", account.Name, i, accountsRetrieved[i].Name)
+			}
+		}
+	})
 }

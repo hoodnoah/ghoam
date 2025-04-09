@@ -1,13 +1,13 @@
-INSERT INTO account_groups (id, name, parent_id, display_after, is_immutable) VALUES
-  ('assets', 'Assets', NULL, NULL, true),
-  ('liabilities', 'Liabilities', NULL, 'assets', true),
-  ('equity', 'Equity', NULL, 'liabilities', true),
-  ('revenues', 'Revenues', 'equity', NULL, true),
-  ('expenses', 'Expenses', 'equity', 'revenues', true);
+INSERT INTO account_groups (name, parent_name, display_after, is_immutable) VALUES
+  ('Assets', NULL, NULL, true),
+  ('Liabilities', NULL, 'Assets', true),
+  ('Equity', NULL, 'Liabilities', true),
+  ('Revenues', 'Equity', NULL, true),
+  ('Expenses', 'Equity', 'Revenues', true);
 
-INSERT INTO account_types (id, name, display_after) VALUES
-  ('asset', 'Asset', NULL),
-  ('liability', 'Liability', 'asset'),
-  ('equity', 'Equity', 'liability'),
-  ('revenue', 'Revenue', 'equity'),
-  ('expense', 'Expense', 'revenue');
+INSERT INTO account_types (name, display_after) VALUES
+  ('Asset', NULL),
+  ('Liability', 'Asset'),
+  ('Equity', 'Liability'),
+  ('Revenue', 'Equity'),
+  ('Expense', 'Revenue');

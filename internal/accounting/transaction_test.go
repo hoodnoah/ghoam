@@ -15,8 +15,8 @@ func TestTransactionBalanced(t *testing.T) {
 			Timestamp:   time.Now(),
 			Description: "Balanced Entry",
 			Lines: []accounting.JournalEntryLine{
-				{AccountID: "1", Amount: 100.0, Side: accounting.Debit},
-				{AccountID: "2", Amount: 100.0, Side: accounting.Credit},
+				{AccountName: "1", Amount: 100.0, Side: accounting.Debit},
+				{AccountName: "2", Amount: 100.0, Side: accounting.Credit},
 			},
 		}
 
@@ -31,8 +31,8 @@ func TestTransactionBalanced(t *testing.T) {
 			Timestamp:   time.Now(),
 			Description: "Unbalanced Entry",
 			Lines: []accounting.JournalEntryLine{
-				{AccountID: "1", Amount: 100.0, Side: accounting.Debit},
-				{AccountID: "2", Amount: 50.0, Side: accounting.Credit},
+				{AccountName: "1", Amount: 100.0, Side: accounting.Debit},
+				{AccountName: "2", Amount: 50.0, Side: accounting.Credit},
 			},
 		}
 

@@ -7,9 +7,9 @@ import (
 
 func TestSortAccounts(t *testing.T) {
 	unsorted := []Account{
-		{ID: "accounts receivable", Name: "Accounts Receivable", ParentGroupID: "assets", AccountType: Asset, NormalBalance: DebitNormal, DisplayAfter: sql.NullString{String: "cash", Valid: true}},
-		{ID: "cash", Name: "Cash", ParentGroupID: "assets", AccountType: Asset, NormalBalance: DebitNormal, DisplayAfter: sql.NullString{}},
-		{ID: "fixed assets", Name: "Fixed Assets", ParentGroupID: "assets", AccountType: Asset, NormalBalance: DebitNormal, DisplayAfter: sql.NullString{String: "accounts receivable", Valid: true}},
+		{Name: "Accounts Receivable", ParentGroupName: "Assets", AccountType: Asset, NormalBalance: DebitNormal, DisplayAfter: sql.NullString{String: "Cash", Valid: true}},
+		{Name: "Cash", ParentGroupName: "Assets", AccountType: Asset, NormalBalance: DebitNormal, DisplayAfter: sql.NullString{}},
+		{Name: "Fixed Assets", ParentGroupName: "Assets", AccountType: Asset, NormalBalance: DebitNormal, DisplayAfter: sql.NullString{String: "Accounts Receivable", Valid: true}},
 	}
 
 	got, err := SortAccounts(unsorted)
@@ -17,10 +17,10 @@ func TestSortAccounts(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	wantOrder := []string{"cash", "accounts receivable", "fixed assets"}
+	wantOrder := []string{"Cash", "Accounts Receivable", "Fixed Assets"}
 	for i, a := range got {
-		if a.ID != wantOrder[i] {
-			t.Fatalf("expected %s at index %d, got %s", wantOrder[i], i, a.ID)
+		if a.Name != wantOrder[i] {
+			t.Fatalf("expected %s at index %d, got %s", wantOrder[i], i, a.Name)
 		}
 	}
 }

@@ -7,9 +7,8 @@ import (
 
 // representation of an account group
 type AccountGroup struct {
-	ID           string         `json:"id"`
 	Name         string         `json:"name"`
-	ParentID     sql.NullString `json:"parent_id"`     // applicable for a subheading; empty -> null
+	ParentName   sql.NullString `json:"parent_name"`   // applicable for a subheading; empty -> null
 	DisplayAfter sql.NullString `json:"display_after"` // for orderings; empty -> null
 	IsImmutable  bool           `json:"is_immutable"`  // if true, this group cannot be deleted or altered
 }
@@ -18,42 +17,41 @@ type AccountGroup struct {
 type AccountType string
 
 const (
-	Asset       AccountType = "asset"
-	ContraAsset AccountType = "contra_asset"
-	Liability   AccountType = "liability"
-	Equity      AccountType = "equity"
-	Revenue     AccountType = "revenue"
-	Expense     AccountType = "expense"
+	Asset       AccountType = "Asset"
+	ContraAsset AccountType = "Contra Asset"
+	Liability   AccountType = "Liability"
+	Equity      AccountType = "Equity"
+	Revenue     AccountType = "Revenue"
+	Expense     AccountType = "Expense"
 )
 
 // enumeration of the types of balances
 type NormalBalance string
 
 const (
-	CreditNormal NormalBalance = "credit"
-	DebitNormal  NormalBalance = "debit"
+	CreditNormal NormalBalance = "Credit"
+	DebitNormal  NormalBalance = "Debit"
 )
 
 type Account struct {
-	ID            string         `json:"id"`
-	Name          string         `json:"name"`
-	ParentGroupID string         `json:"account_group_id"`
-	AccountType   AccountType    `json:"account_type"`
-	NormalBalance NormalBalance  `json:"normal_balance"`
-	DisplayAfter  sql.NullString `json:"display_after"` // for ordering; empty -> null
+	Name            string         `json:"name"`
+	ParentGroupName string         `json:"parent_group_name"`
+	AccountType     AccountType    `json:"account_type"`
+	NormalBalance   NormalBalance  `json:"normal_balance"`
+	DisplayAfter    sql.NullString `json:"display_after"` // for ordering; empty -> null
 }
 
 // enumeration of the types of entries
 type EntrySide string
 
 const (
-	Debit  EntrySide = "debit"
-	Credit EntrySide = "credit"
+	Debit  EntrySide = "Debit"
+	Credit EntrySide = "Credit"
 )
 
 // representation of a single journal entry line
 type JournalEntryLine struct {
-	AccountID      string         `json:"account_id"`
+	AccountName    string         `json:"account_name"`
 	Amount         float64        `json:"amount"`
 	Side           EntrySide      `json:"side"`
 	CrossReference sql.NullString `json:"cross_reference"` // e.g. in a reversal; empty -> null
