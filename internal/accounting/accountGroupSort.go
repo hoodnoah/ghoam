@@ -16,27 +16,8 @@ type accountGroupNode struct {
 // It first builds a tree based on ParentName, then sorts each set of siblings using their DisplayAfter field.
 // Finally, it performs a pre-order traversal to produce a flattened, ordered slice.
 func hierarchicalAccountGroupSort(groups []*AccountGroup) ([]*AccountGroup, error) {
-	// 1. Build a map of group names to nodes
-	nodeMap := makeNodeMap(groups)
-
-	// 2. Build the tree structure: set up parent-child relationships
-	// the tree is represented by root nodes, under which all children are present.
-	roots, err := makeTree(nodeMap)
-	if err != nil {
-		return nil, err
-	}
-
-	// 3. Recursively sort the children at each level using TopoSort
-	// Optionally, sort the roots themselves with TopoSort
-	sortedRoots, err := ordering.TopoSort(roots,
-		func(n *accountGroupNode) string { return n.group.Name },
-		func(n *accountGroupNode) (string, bool) {
-			if n.group.DisplayAfter.Valid {
-				return n.group.DisplayAfter.String, true
-			}
-			return "", false
-		},
-	)
+	// Get sorted tree of accountGroupNodes
+	sortedRoots, err := BuildAccountGroupTree(groups)
 	if err != nil {
 		return nil, err
 	}
@@ -59,6 +40,38 @@ func hierarchicalAccountGroupSort(groups []*AccountGroup) ([]*AccountGroup, erro
 	return result, nil
 }
 
+// builds and returns a sorted tree of accountGroupNodes.
+func BuildAccountGroupTree(groups []*AccountGroup) ([]*accountGroupNode, error) {
+	nodeMap := makeNodeMap(groups)
+	roots, err := makeTree(nodeMap)
+	if err != nil {
+		return nil, err
+	}
+
+	sortedRoots, err := ordering.TopoSort(
+		roots,
+		func(n *accountGroupNode) string { return n.group.Name },
+		func(n *accountGroupNode) (string, bool) {
+			if n.group.DisplayAfter.Valid {
+				return n.group.DisplayAfter.String, true
+			}
+			return "", false
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, root := range sortedRoots {
+		if err := sortAdjacentGroups(root); err != nil {
+			return nil, err
+		}
+	}
+
+	return sortedRoots, nil
+}
+
+// sorts account groups in place (pseudo, it copies them internally)
 func SortAccountGroupsInPlace(groups []*AccountGroup) error {
 	sorted, err := hierarchicalAccountGroupSort(groups)
 	if err != nil {
