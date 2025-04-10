@@ -1,14 +1,15 @@
 package handlers
 
 import (
-	"encoding/json"
+	"html/template"
 	"net/http"
 
 	"github.com/hoodnoah/ghoam/internal/services"
 )
 
 type ChartOfAccountsHandler struct {
-	ChartOfAccountsService *services.ChartOfAccountsService
+	ChartOfAccountsService  *services.ChartOfAccountsService
+	ChartOfAccountsTemplate *template.Template
 }
 
 func (h *ChartOfAccountsHandler) GetChart(w http.ResponseWriter, r *http.Request) {
@@ -20,8 +21,10 @@ func (h *ChartOfAccountsHandler) GetChart(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(chart); err != nil {
-		http.Error(w, "failed to encode chart to json: "+err.Error(), http.StatusInternalServerError)
+	w.Header().Set("Content-Type", "text/html")
+
+	// render the chart using the chart.tmpl template
+	if err := h.ChartOfAccountsTemplate.Execute(w, chart); err != nil {
+		http.Error(w, "Failed to render chart: "+err.Error(), http.StatusInternalServerError)
 	}
 }
