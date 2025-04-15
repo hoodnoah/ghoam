@@ -20,59 +20,120 @@ func TopoSort[T any](
 	idFn func(T) string,
 	afterFn func(T) (string, bool),
 ) ([]T, error) {
-	n := len(items)
-	id2idx := make(map[string]int, n) // detect duplicates and resolve references
-	indeg := make([]int, n)           // Kahn's in-degree counter
-	adj := make([][]int, n)           // adjacency list
-
-	// 1. Map IDs -> index, detect duplicates
-	for i, it := range items {
-		id := idFn(it)
-		if _, dup := id2idx[id]; dup {
-			return nil, fmt.Errorf("toposort: duplicate id %q", id)
-		}
-		id2idx[id] = i
+	idToIndexMap, err := makeIDToIndexMap(items, idFn)
+	if err != nil {
+		return nil, err
 	}
 
-	// 2. Build graph and in-degree table
-	for i, it := range items {
-		if afterID, ok := afterFn(it); ok {
-			parentIdx, exists := id2idx[afterID]
-			if !exists {
-				return nil, fmt.Errorf("toposort: unknown reference %q (for %q)", afterID, idFn(it))
-			}
-			adj[parentIdx] = append(adj[parentIdx], i) // afterID -> current
-			indeg[i]++
-		}
+	// make inDegrees, adjacency lists
+	inDegreeAdjacency, err := makeInDegreesAdjacencyList(items, idFn, afterFn, idToIndexMap)
+	if err != nil {
+		return nil, err
 	}
+	adjacencyList := inDegreeAdjacency.adjacencyList
+	inDegrees := inDegreeAdjacency.inDegrees
 
 	// 3. Kahn's algorithm
-	q := list.New() // queue of nodes with in-degree 0
-	for i := 0; i < n; i++ {
-		if indeg[i] == 0 {
-			q.PushBack(i)
+	kahnTree, err := makeKahnTree(
+		items,
+		adjacencyList,
+		inDegrees,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return kahnTree, nil
+}
+
+// maps items' identifiers to their index within the list of items provided.
+// errors in the event of a duplicate entry
+func makeIDToIndexMap[T any](items []T, idFn func(T) string) (map[string]int, error) {
+	idMap := make(map[string]int, len(items))
+
+	for index, item := range items {
+		id := idFn(item)
+
+		// check for duplicates by polling the map
+		if _, dup := idMap[id]; dup {
+			return nil, fmt.Errorf("duplicate ID detected: %s", id)
+		}
+
+		idMap[id] = index
+	}
+
+	return idMap, nil
+}
+
+// given a list of items, produce their adjacency list and inDegrees for Kahn's algorithm
+func makeInDegreesAdjacencyList[T any](
+	items []T,
+	idFn func(T) string,
+	afterFn func(T) (string, bool),
+	idToIndexMap map[string]int,
+) (
+	*struct {
+		adjacencyList [][]int
+		inDegrees     []int
+	}, error) {
+
+	n := len(items)
+	adjacencyList := make([][]int, n)
+	inDegrees := make([]int, n)
+
+	for index, item := range items {
+		if afterID, ok := afterFn(item); ok {
+			parentIndex, exists := idToIndexMap[afterID]
+			if !exists {
+				return nil, fmt.Errorf("toposort: unknown reference %q (for %q", afterID, idFn(item))
+			}
+			adjacencyList[parentIndex] = append(adjacencyList[parentIndex], index) // afterID -> current
+			inDegrees[index]++
 		}
 	}
 
-	var out []T
-	for q.Len() > 0 {
-		e := q.Front()
-		q.Remove(e)
-		v := e.Value.(int)
+	return &struct {
+		adjacencyList [][]int
+		inDegrees     []int
+	}{
+		adjacencyList: adjacencyList,
+		inDegrees:     inDegrees,
+	}, nil
+}
 
-		out = append(out, items[v])
+// kahn's algorithm
+func makeKahnTree[T any](
+	items []T,
+	adjacencyList [][]int,
+	inDegrees []int,
+) ([]T, error) {
+	var kahnTree []T
 
-		for _, w := range adj[v] {
-			indeg[w]--
-			if indeg[w] == 0 {
-				q.PushBack(w)
+	queue := list.New() // create a list of nodes, all of which have in-degrees of 0
+	for index := range len(items) {
+		if inDegrees[index] == 0 {
+			queue.PushBack(index)
+		}
+	}
+
+	for queue.Len() > 0 {
+		element := queue.Front()
+		queue.Remove(element)
+		value := element.Value.(int)
+
+		kahnTree = append(kahnTree, items[value])
+
+		for _, w := range adjacencyList[value] {
+			inDegrees[w]--
+			if inDegrees[w] == 0 {
+				queue.PushBack(w)
 			}
 		}
 	}
 
-	if len(out) != n {
+	if len(kahnTree) != len(items) {
 		return nil, fmt.Errorf("toposort: cycle detected")
 	}
 
-	return out, nil
+	return kahnTree, nil
 }
