@@ -2,7 +2,6 @@ package accounting
 
 import (
 	"context"
-	"sort"
 
 	"github.com/hoodnoah/ghoam/internal/ordering"
 )
@@ -26,49 +25,34 @@ func BuildChartOfAccountsTree(ctx context.Context, groupRepo AccountGroupReposit
 		return nil, err
 	}
 
-	// build sorted tree of account groups
-	sortedRoots, err := BuildAccountGroupTree(groups)
+	// build sorted (flat) tree of account groups
+	groupTree, err := BuildAccountGroupTree(groups)
 	if err != nil {
 		return nil, err
 	}
 
-	// Build map: group name -> AccountGroupNode
-	groupMap := make(map[string]*ChartOfAccountsNode)
-	for _, root := range sortedRoots {
-		populateGroupMap(root, groupMap)
+	// convert account groups to a tree
+	pseudoRoot := ChartOfAccountsNode{
+		Children: convertGroupTreeToChartNodes(groupTree),
 	}
 
-	// Attach accounts to groups
-	for _, acct := range accounts {
-		if node, ok := groupMap[acct.ParentGroupName]; ok {
-			node.Accounts = append(node.Accounts, acct)
+	// Create a lookup map to attach accounts to nodes
+	nodeLookup := make(map[string]*ChartOfAccountsNode)
+	collectNodes(&pseudoRoot, nodeLookup)
+
+	// Attach accounts to the corresponding group nodes.
+	for _, account := range accounts {
+		if node, ok := nodeLookup[account.ParentGroupName]; ok {
+			node.Accounts = append(node.Accounts, account)
 		}
 	}
 
-	// Build the tree
-	var root ChartOfAccountsNode // virtual root node
-	for _, node := range groupMap {
-		if node.Group.ParentName.Valid {
-			parentName := node.Group.ParentName.String
-			if parent, ok := groupMap[parentName]; ok {
-				parent.Children = append(parent.Children, node)
-			}
-		} else {
-			root.Children = append(root.Children, node)
-		}
-	}
-
-	// Build an ordering map from the sorted roots and sort the tree
-	orderMap := buildOrderingMap(sortedRoots)
-	sortChartTree(&root, orderMap)
-
-	// Order the accounts within the tree
-	err = sortAccountsInTree(&root)
-	if err != nil {
+	// Recursively topologically sort accounts at each node
+	if err := topoSortAccountsInTree(&pseudoRoot); err != nil {
 		return nil, err
 	}
 
-	return &root, nil
+	return &pseudoRoot, nil
 }
 
 func populateGroupMap(n *accountGroupNode, groupMap map[string]*ChartOfAccountsNode) {
@@ -103,34 +87,50 @@ func buildOrderingMap(sortedRoots []*accountGroupNode) map[string]int {
 	return orderMap
 }
 
-func sortChartTree(root *ChartOfAccountsNode, orderMap map[string]int) {
-	sort.SliceStable(root.Children, func(i, j int) bool {
-		return orderMap[root.Children[i].Group.Name] < orderMap[root.Children[j].Group.Name]
-	})
+// Given a list of AccountGroup nodes, form them into an ordered tree structure
+func convertGroupTreeToChartNodes(groupNodes []*accountGroupNode) []*ChartOfAccountsNode {
+	var chartNodes []*ChartOfAccountsNode
 
-	for _, child := range root.Children {
-		sortChartTree(child, orderMap)
+	// for all groupNodes, create a ChartOfAccounts node
+	// ordering is preserved
+	for _, groupNode := range groupNodes {
+		node := &ChartOfAccountsNode{
+			Group:    groupNode.group,
+			Children: convertGroupTreeToChartNodes(groupNode.children),
+			Accounts: []*Account{},
+		}
+		chartNodes = append(chartNodes, node)
+	}
+
+	return chartNodes
+}
+
+// Builds a map from group name -> ChartOfAccountsNode for quick lookups
+func collectNodes(node *ChartOfAccountsNode, lookup map[string]*ChartOfAccountsNode) {
+	// if the node has no Group, add the group to the map
+	if node.Group != nil {
+		lookup[node.Group.Name] = node
+	}
+
+	// recurse down for all children
+	for _, child := range node.Children {
+		collectNodes(child, lookup)
 	}
 }
 
-func sortAccountsInTree(node *ChartOfAccountsNode) error {
-	idFn := func(a *Account) string { return a.Name }
-	afterFn := func(a *Account) (string, bool) {
-		if a.DisplayAfter.Valid {
-			return a.DisplayAfter.String, true
-		}
-		return "", false
-	}
-
-	sorted, err := ordering.TopoSort[*Account](node.Accounts, idFn, afterFn)
+// Apply a topological sort on the accounts at the node, and recursively on its children
+func topoSortAccountsInTree(root *ChartOfAccountsNode) error {
+	// Sort accounts using a topological sort
+	sorted, err := ordering.TopoSort(root.Accounts, AccountIDFn, AccountAfterFn)
 	if err != nil {
 		return err
 	}
 
-	node.Accounts = sorted
+	root.Accounts = sorted
 
-	for _, child := range node.Children {
-		if err := sortAccountsInTree(child); err != nil {
+	// Apply the same ordering process to child nodes
+	for _, child := range root.Children {
+		if err := topoSortAccountsInTree(child); err != nil {
 			return err
 		}
 	}

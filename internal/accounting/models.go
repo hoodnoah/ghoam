@@ -45,6 +45,18 @@ type Account struct {
 	DisplayAfter    sql.NullString `json:"display_after"` // for ordering; empty -> null
 }
 
+// helper functions for sorting
+func AccountIDFn(account *Account) string {
+	return account.Name
+}
+
+func AccountAfterFn(account *Account) (string, bool) {
+	if account.DisplayAfter.Valid {
+		return account.DisplayAfter.String, true
+	}
+	return "", false
+}
+
 // enumeration of the types of entries
 type EntrySide string
 
