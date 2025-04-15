@@ -110,21 +110,27 @@ func makeKahnTree[T any](
 	var kahnTree []T
 
 	queue := list.New() // create a list of nodes, all of which have in-degrees of 0
-	for index := range len(items) {
+	for index := range items {
 		if inDegrees[index] == 0 {
 			queue.PushBack(index)
 		}
 	}
 
 	for queue.Len() > 0 {
+		// pop the front element of the queue, getting its integer value (its index in items)
 		element := queue.Front()
 		queue.Remove(element)
 		value := element.Value.(int)
 
+		// add the node to the KahnTree
 		kahnTree = append(kahnTree, items[value])
 
+		// go through the adjacencyList, reducing its in-degrees by one
 		for _, w := range adjacencyList[value] {
 			inDegrees[w]--
+
+			// if it's 0 in-degrees, it's a root
+			// push it back
 			if inDegrees[w] == 0 {
 				queue.PushBack(w)
 			}
