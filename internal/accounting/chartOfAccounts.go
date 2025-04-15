@@ -1,6 +1,11 @@
 package accounting
 
-import "context"
+import (
+	"context"
+	"sort"
+
+	"github.com/hoodnoah/ghoam/internal/ordering"
+)
 
 type ChartOfAccountsNode struct {
 	Group    *AccountGroup
@@ -53,6 +58,16 @@ func BuildChartOfAccountsTree(ctx context.Context, groupRepo AccountGroupReposit
 		}
 	}
 
+	// Build an ordering map from the sorted roots and sort the tree
+	orderMap := buildOrderingMap(sortedRoots)
+	sortChartTree(&root, orderMap)
+
+	// Order the accounts within the tree
+	err = sortAccountsInTree(&root)
+	if err != nil {
+		return nil, err
+	}
+
 	return &root, nil
 }
 
@@ -68,11 +83,57 @@ func populateGroupMap(n *accountGroupNode, groupMap map[string]*ChartOfAccountsN
 	}
 }
 
-func buildChartNode(n *accountGroupNode, groupMap map[string]*ChartOfAccountsNode) *ChartOfAccountsNode {
-	node := groupMap[n.group.Name]
-	for _, child := range n.children {
-		node.Children = append(node.Children, buildChartNode(child, groupMap))
+func buildOrderingMap(sortedRoots []*accountGroupNode) map[string]int {
+	orderMap := make(map[string]int)
+	index := 0
+
+	var traverse func(node *accountGroupNode)
+	traverse = func(node *accountGroupNode) {
+		orderMap[node.group.Name] = index
+		index++
+		for _, child := range node.children {
+			traverse(child)
+		}
 	}
 
-	return node
+	for _, node := range sortedRoots {
+		traverse(node)
+	}
+
+	return orderMap
+}
+
+func sortChartTree(root *ChartOfAccountsNode, orderMap map[string]int) {
+	sort.SliceStable(root.Children, func(i, j int) bool {
+		return orderMap[root.Children[i].Group.Name] < orderMap[root.Children[j].Group.Name]
+	})
+
+	for _, child := range root.Children {
+		sortChartTree(child, orderMap)
+	}
+}
+
+func sortAccountsInTree(node *ChartOfAccountsNode) error {
+	idFn := func(a *Account) string { return a.Name }
+	afterFn := func(a *Account) (string, bool) {
+		if a.DisplayAfter.Valid {
+			return a.DisplayAfter.String, true
+		}
+		return "", false
+	}
+
+	sorted, err := ordering.TopoSort[*Account](node.Accounts, idFn, afterFn)
+	if err != nil {
+		return err
+	}
+
+	node.Accounts = sorted
+
+	for _, child := range node.Children {
+		if err := sortAccountsInTree(child); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

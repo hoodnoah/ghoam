@@ -136,7 +136,7 @@ func TestBuildChartOfAccountsTree(t *testing.T) {
 			IsImmutable:  false,
 		}
 
-		groups := []*AccountGroup{assets, currentAssets, liabilities, currentLiabilities}
+		groups := []*AccountGroup{liabilities, currentAssets, currentLiabilities, assets}
 
 		// Setup sample accounts:
 		// Cash and Inventory belong to "Current Assets"
@@ -162,7 +162,7 @@ func TestBuildChartOfAccountsTree(t *testing.T) {
 			NormalBalance:   CreditNormal,
 			DisplayAfter:    sql.NullString{Valid: false},
 		}
-		accounts := []*Account{cash, inventory, accountsPayable}
+		accounts := []*Account{accountsPayable, inventory, cash}
 
 		groupRepo := &fakeAccountGroupRepo{groups: groups}
 		accountRepo := &fakeAccountRepo{accounts: accounts}
