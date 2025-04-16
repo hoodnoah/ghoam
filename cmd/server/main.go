@@ -21,34 +21,27 @@ func Execute(repos *sqlite.Repositories) {
 	}
 
 	// Parse templates from the templates/ folder
-	tmpl, err := template.ParseGlob(filepath.Join("templates", "*.tmpl"))
+	tmpl, err := template.ParseGlob(filepath.Join("templates", "*.gohtml"))
 	if err != nil {
 		log.Fatalf("failed to parse templates with error %v", err)
-	}
-
-	// Get the chart, index templates
-	chartTmpl := tmpl.Lookup("chart.tmpl")
-	if chartTmpl == nil {
-		log.Fatalf("chart.tmpl not found")
-	}
-
-	indexTmpl := tmpl.Lookup("index.tmpl")
-	if indexTmpl == nil {
-		log.Fatalf("index.tmpl not found")
 	}
 
 	// Create the handler for the Chart of Accounts endpoint
 	chartHandler := &handlers.ChartOfAccountsHandler{
 		ChartOfAccountsService:  &chartService,
-		ChartOfAccountsTemplate: chartTmpl,
+		ChartOfAccountsTemplate: tmpl,
 	}
 
 	// Set up routes: the index page and the chart endpoint for HTMX
+	// index handler
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if err := indexTmpl.Execute(w, nil); err != nil {
-			http.Error(w, "failed to render index: "+err.Error(), http.StatusInternalServerError)
+		data := map[string]any{"Title": "Home "}
+		if err := tmpl.ExecuteTemplate(w, "layout", data); err != nil {
+			http.Error(w, "rendering index failed:"+err.Error(), http.StatusInternalServerError)
 		}
 	})
+
+	// chart of accounts handler
 	http.HandleFunc("/chart", chartHandler.GetChart)
 
 	log.Println("Server starting on :8080")

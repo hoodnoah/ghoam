@@ -1,20 +1,10 @@
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Chart of Accounts</title>
-    <!-- Load HTMX from a CDN -->
-    <script src="https://unpkg.com/htmx.org@1.9.2"></script>
-  </head>
-  <body>
-    <h1>Chart of Accounts</h1>
-    <!-- Button with HTMX attributes for refreshing the chart fragment -->
-    <button hx-get="/chart" hx-target="#chartContainer" hx-swap="outerHTML">
-      Refresh Chart
-    </button>
-    <!-- Container that will be updated via HTMX requests -->
-    <div id="chartContainer">
-      <p>Initial chart will appear here...</p>
-    </div>
-  </body>
-</html>
+{{ define "index" }}
+  {{ template "layout" . }}
+{{ end }}
+
+{{ define "content" }}
+  <h1>GHOAM - Business Accounting for Humans</h1>
+  <ul>
+    <li><a href="/chart">Chart of Accounts</a>
+  </ul>
+{{ end }}

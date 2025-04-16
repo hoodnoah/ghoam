@@ -1,0 +1,38 @@
+{{ define "chartFragment" }}
+  <ul>
+    <!-- Render the tree recursively -->
+    {{ template "chartNode" . }}
+  </ul>
+{{ end }}
+
+{{define "chartNode"}}
+<li>
+  {{if .Group}}
+  <strong>{{.Group.Name}}</strong>
+  {{ end }}
+  <!-- Render accounts if any are associated with this group -->
+  {{if .Accounts}}
+  <ul>
+    {{
+      range.Accounts
+    }}
+    <li>{{.Name}}</li>
+    {{
+      end
+    }}
+  </ul>
+  {{ end }}
+  <!-- Render children groups -->
+  {{if .Children}}
+  <ul>
+    {{
+      range.Children
+    }}
+    {{template "chartNode" .}}
+    {{
+      end
+    }}
+  </ul>
+  {{ end }}
+</li>
+{{ end }}

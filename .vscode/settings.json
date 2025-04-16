@@ -1,5 +1,11 @@
 {
+  // Treat .gohtml as Go-template, not plain HTML
   "files.associations": {
-    "*.gohtml": "html"
+    "*.gohtml": "go-template"
+  },
+  // Disable HTML formatting for go-html-template
+  "[go-html-template]": {
+    "editor.formatOnSave": false,
+    "editor.defaultFormatter": null
   }
 }
