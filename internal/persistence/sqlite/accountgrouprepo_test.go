@@ -12,7 +12,7 @@ import (
 	"github.com/hoodnoah/ghoam/internal/accounting"
 )
 
-func TestAccountGroupRepo_Save(t *testing.T) {
+func TestAccountGroupRepo_Upsert(t *testing.T) {
 
 	t.Run("inserts a new account group", func(t *testing.T) {
 		ctx := context.Background()
@@ -32,7 +32,7 @@ func TestAccountGroupRepo_Save(t *testing.T) {
 		}
 
 		// Step 3: save the account
-		if err := repos.AccountGroups.Save(ctx, group); err != nil {
+		if err := repos.AccountGroups.Upsert(ctx, group); err != nil {
 			t.Fatalf("failed to save account group with error \"%v\"", err)
 		}
 
@@ -63,7 +63,7 @@ func TestAccountGroupRepo_Save(t *testing.T) {
 		}
 
 		// Try and commit the change
-		err = repos.AccountGroups.Save(ctx, &newGroup)
+		err = repos.AccountGroups.Upsert(ctx, &newGroup)
 
 		if !accounting.IsGroupImmutable(err) {
 			t.Fatalf("expected to receive an IsGroupImmutable error, received %v", err)
@@ -146,7 +146,7 @@ func TestAccountGroupRepo_GetAll(t *testing.T) {
 			DisplayAfter: sql.NullString{},
 			IsImmutable:  false,
 		}
-		if err := repos.AccountGroups.Save(ctx, &newGroup); err != nil {
+		if err := repos.AccountGroups.Upsert(ctx, &newGroup); err != nil {
 			t.Fatalf("failed to add new group with error \"%s\"", err)
 		}
 
@@ -199,6 +199,110 @@ func TestAccountGroupRepo_GetAll(t *testing.T) {
 			if !actual[i].Equals(&expected[i]) {
 				t.Fatalf("expected to see %s at index %d, received %s", expected[i].Name, i, actual[i].Name)
 			}
+		}
+	})
+}
+
+func TestAccountGroupRepo_Insert(t *testing.T) {
+	t.Run("fails to save an AccountGroup which already exists", func(t *testing.T) {
+		ctx := context.Background()
+
+		repos, err := New(":memory:")
+		if err != nil {
+			t.Fatalf("failed to create in memory SQLite DB with error %v", err)
+		}
+
+		testGroup := accounting.AccountGroup{
+			Name:         "Current Assets",
+			ParentName:   sql.NullString{String: "Assets", Valid: true},
+			DisplayAfter: sql.NullString{},
+			IsImmutable:  false,
+		}
+
+		// upsert a new AccountGroup
+		err = repos.AccountGroups.Upsert(ctx, &testGroup)
+		if err != nil {
+			t.Fatalf("failed to upsert a new account group for test setup: %v", err)
+		}
+
+		// try and *insert* the same account group a second time.
+		err = repos.AccountGroups.Insert(ctx, &testGroup)
+		if err == nil {
+			t.Fatal("expected an error on re-inserting an existing account group, received none")
+		}
+	})
+
+	t.Run("fails to save an AccountGroup whose parent doesn't exist", func(t *testing.T) {
+		ctx := context.Background()
+		repos, err := New(":memory:")
+		if err != nil {
+			t.Fatalf("failed to create in memory SQLite DB with error %v", err)
+		}
+
+		testGroup := accounting.AccountGroup{
+			Name:         "Notes Payable",
+			ParentName:   sql.NullString{String: "Long-Term Liabilities", Valid: true},
+			DisplayAfter: sql.NullString{},
+			IsImmutable:  false,
+		}
+
+		// try and insert
+		err = repos.AccountGroups.Insert(ctx, &testGroup)
+
+		if !accounting.IsParentNameNotExists(err) {
+			t.Fatalf("expected a ParentNameNotExists error, received %v", err)
+		}
+	})
+
+	t.Run("fails to save an AccountGroup whose displayAfter doesn't exist", func(t *testing.T) {
+		ctx := context.Background()
+		repos, err := New(":memory:")
+		if err != nil {
+			t.Fatalf("failed to create an in memory SQLite DB with error %v", err)
+		}
+
+		testGroup := accounting.AccountGroup{
+			Name:         "Notes Payable",
+			ParentName:   sql.NullString{String: "Liabilities", Valid: true},
+			DisplayAfter: sql.NullString{String: "Current Liabilities", Valid: true},
+			IsImmutable:  false,
+		}
+
+		// try and insert
+		err = repos.AccountGroups.Insert(ctx, &testGroup)
+		if !accounting.IsDisplayAfterNotExists(err) {
+			t.Fatalf("expected a DisplayAfterNotExists error, received %v", err)
+		}
+	})
+
+	t.Run("inserts a well-formed AccountGroup successfully", func(t *testing.T) {
+		ctx := context.Background()
+		repos, err := New(":memory:")
+		if err != nil {
+			t.Fatalf("failed to create an in memory SQLite DB with error %v", err)
+		}
+
+		// insert a valid DisplayAfter
+		err = repos.AccountGroups.Insert(ctx, &accounting.AccountGroup{
+			Name:         "Current Liabilities",
+			ParentName:   sql.NullString{String: "Liabilities", Valid: true},
+			DisplayAfter: sql.NullString{},
+			IsImmutable:  false,
+		})
+		if err != nil {
+			t.Fatalf("failed to insert group \"Current Liabilities\" with error %v", err)
+		}
+
+		testGroup := accounting.AccountGroup{
+			Name:         "Long Term Liabilities",
+			ParentName:   sql.NullString{String: "Liabilities", Valid: true},
+			DisplayAfter: sql.NullString{String: "Current Liabilities", Valid: true},
+			IsImmutable:  false,
+		}
+
+		err = repos.AccountGroups.Insert(ctx, &testGroup)
+		if err != nil {
+			t.Fatalf("failed to insert group \"%s\" with error %v", testGroup.Name, err)
 		}
 	})
 }

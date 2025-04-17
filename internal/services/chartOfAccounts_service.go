@@ -11,7 +11,7 @@ type ChartOfAccountsService struct {
 	AccountGroupRepo accounting.AccountGroupRepository
 }
 
-// Produces a ChartOfAccounts tree from the AccountRepo and AccountGroup repo
+// Produces a ChartOfAccounts tree from the AccountRepo and AccountGrouprepo
 func (s *ChartOfAccountsService) GetChartOfAccounts(ctx context.Context) (*accounting.ChartOfAccountsNode, error) {
 	return accounting.BuildChartOfAccountsTree(ctx, s.AccountGroupRepo, s.AccountRepo)
 }

@@ -3,7 +3,8 @@ package accounting
 import "context"
 
 type AccountGroupRepository interface {
-	Save(ctx context.Context, group *AccountGroup) error
+	Insert(ctx context.Context, group *AccountGroup) error
+	Upsert(ctx context.Context, group *AccountGroup) error
 	GetByName(ctx context.Context, name string) (AccountGroup, error)
 	GetAll(ctx context.Context) ([]*AccountGroup, error)
 }

@@ -5,18 +5,6 @@ import (
 	"time"
 )
 
-// representation of an account group
-type AccountGroup struct {
-	Name         string         `json:"name"`
-	ParentName   sql.NullString `json:"parent_name"`   // applicable for a subheading; empty -> null
-	DisplayAfter sql.NullString `json:"display_after"` // for orderings; empty -> null
-	IsImmutable  bool           `json:"is_immutable"`  // if true, this group cannot be deleted or altered
-}
-
-func (a *AccountGroup) Equals(other *AccountGroup) bool {
-	return a.Name == other.Name && a.ParentName == other.ParentName && a.DisplayAfter == other.DisplayAfter && a.IsImmutable == other.IsImmutable
-}
-
 // enumeration of the types of accounts
 type AccountType string
 

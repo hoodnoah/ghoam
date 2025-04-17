@@ -17,6 +17,8 @@ type accountGroupRepo struct {
 	db *sql.DB
 }
 
+type validateFn func(context.Context, *accounting.AccountGroup) error
+
 // gets an account group by name.
 //
 // Returns ErrGroupNotFound if the account does not exist.
@@ -49,9 +51,9 @@ func (r *accountGroupRepo) GetByName(ctx context.Context, name string) (accounti
 	return group, nil
 }
 
-// Save inserts or updates an AccountGroup in the database
+// Upsert inserts or updates an AccountGroup in the database
 // More or less an upsert
-func (r *accountGroupRepo) Save(ctx context.Context, group *accounting.AccountGroup) error {
+func (r *accountGroupRepo) Upsert(ctx context.Context, group *accounting.AccountGroup) error {
 	const query = `
 		INSERT INTO account_groups
 		  (name, parent_name, display_after, is_immutable)
@@ -122,4 +124,101 @@ func (r *accountGroupRepo) GetAll(ctx context.Context) ([]*accounting.AccountGro
 	}
 
 	return groups, nil
+}
+
+func (r *accountGroupRepo) Insert(ctx context.Context, group *accounting.AccountGroup) error {
+	const query = `
+		INSERT INTO account_groups
+		  (name, parent_name, display_after, is_immutable)
+		VALUES
+		  (?, ?, ?, ?);
+	`
+
+	// run pre-insert validations
+	err := r.runValidators(ctx, group, r.validateGroupExists, r.validateParentExists, r.validateDisplayAfterExists)
+	if err != nil {
+		return err
+	}
+
+	// we know the error is ErrAccountNotFound - we can insert
+	_, err = r.db.ExecContext(ctx, query,
+		group.Name,
+		group.ParentName,
+		group.DisplayAfter,
+		false,
+	)
+
+	return err
+}
+
+// utility method for determining if a name exists
+func (r *accountGroupRepo) nameExists(ctx context.Context, name string) (bool, error) {
+	_, err := r.GetByName(ctx, name)
+
+	// no error means it's been found
+	if err == nil {
+		return true, nil
+	}
+
+	// if it's anything other than a groupNotFound, the error should be propagated
+	if !accounting.IsGroupNotFound(err) {
+		return false, err
+	}
+
+	return false, nil
+}
+
+// determines if a group's name exists
+func (r *accountGroupRepo) validateGroupExists(ctx context.Context, group *accounting.AccountGroup) error {
+	groupNameExists, err := r.nameExists(ctx, group.Name)
+	if err != nil {
+		return err
+	}
+
+	if groupNameExists {
+		return &accounting.ErrGroupAlreadyExists{Name: group.Name}
+	}
+
+	return nil
+}
+
+// determines if a parent exists
+func (r *accountGroupRepo) validateParentExists(ctx context.Context, group *accounting.AccountGroup) error {
+	parentGroupExists, err := r.nameExists(ctx, group.ParentName.String)
+	if err != nil {
+		return err
+	}
+	if !parentGroupExists {
+		return &accounting.ErrParentNameNotExists{Name: group.ParentName.String}
+	}
+
+	return nil
+}
+
+// determines if a referenced displayAfter exists
+func (r *accountGroupRepo) validateDisplayAfterExists(ctx context.Context, group *accounting.AccountGroup) error {
+	if group.DisplayAfter.Valid {
+		afterGroupExists, err := r.nameExists(ctx, group.DisplayAfter.String)
+		if err != nil {
+			return err
+		}
+
+		if !afterGroupExists {
+			return &accounting.ErrDisplayAfterNameNotExists{Name: group.DisplayAfter.String}
+		}
+	}
+
+	return nil
+}
+
+// variadic validation running utility method
+func (r *accountGroupRepo) runValidators(ctx context.Context, group *accounting.AccountGroup, validationFns ...validateFn) error {
+	for _, validateFn := range validationFns {
+		err := validateFn(ctx, group)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

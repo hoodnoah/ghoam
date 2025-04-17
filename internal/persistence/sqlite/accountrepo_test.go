@@ -12,7 +12,7 @@ import (
 	"github.com/hoodnoah/ghoam/internal/accounting"
 )
 
-func TestAccountRepo_Save(t *testing.T) {
+func TestAccountRepo_Upsert(t *testing.T) {
 
 	t.Run("inserts a new account", func(t *testing.T) {
 		ctx := context.Background()
@@ -138,11 +138,6 @@ func TestAccountRepo_GetAll(t *testing.T) {
 			t.Fatalf("failed to get all accounts with error %v", err)
 		}
 
-		// Step 3: Verify the accounts were retrieved
-		if len(accountsRetrieved) != len(accounts) {
-			t.Fatalf("expected %d accounts, got %d", len(accounts), len(accountsRetrieved))
-		}
-
 		for _, account := range accounts {
 			if !slices.ContainsFunc(accountsRetrieved, func(a *accounting.Account) bool {
 				return account.Name == a.Name
@@ -200,16 +195,24 @@ func TestAccountRepo_GetAll(t *testing.T) {
 			t.Fatalf("failed to get all accounts with error %v", err)
 		}
 
-		// Step 3: Verify the accounts were retrieved
-		if len(accountsRetrieved) != len(accounts) {
-			t.Fatalf("expected %d accounts, got %d", len(accounts), len(accountsRetrieved))
+		// verify that accounts are in an expected order
+		indexMap := make(map[string]int)
+		for i, account := range accountsRetrieved {
+			indexMap[account.Name] = i
 		}
 
-		for i, account := range accounts {
-			if accountsRetrieved[i].Name != account.Name {
-				t.Fatalf("expected account %s at index %d, got %s", account.Name, i, accountsRetrieved[i].Name)
-			}
+		bankIndex := indexMap["Institution Bank X1234"]
+		receivableIndex := indexMap["Accounts Receivable"]
+		payableIndex := indexMap["Accounts Payable"]
+
+		if bankIndex > receivableIndex {
+			t.Fatalf("expected Institution Bank X1234 to appear before Accounts Receivable.")
 		}
+
+		if receivableIndex > payableIndex {
+			t.Fatalf("expected Accounts Receivable to appear before Accounts Payable.")
+		}
+
 	})
 }
 

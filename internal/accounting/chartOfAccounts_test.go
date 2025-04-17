@@ -21,7 +21,11 @@ func (f *fakeAccountGroupRepo) GetByName(ctx context.Context, name string) (Acco
 	return AccountGroup{}, nil
 }
 
-func (f *fakeAccountGroupRepo) Save(ctx context.Context, group *AccountGroup) error {
+func (f *fakeAccountGroupRepo) Upsert(ctx context.Context, group *AccountGroup) error {
+	return nil
+}
+
+func (r *fakeAccountGroupRepo) Insert(ctx context.Context, group *AccountGroup) error {
 	return nil
 }
 
