@@ -1,0 +1,4 @@
+(executable
+ (public_name event_source)
+ (name main)
+ (libraries event_source))

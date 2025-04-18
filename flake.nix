@@ -22,6 +22,8 @@
       packages = eachSystem (system:
         let
           pkgs = nixpkgs.legacyPackages.${system};
+          go = pkgs.go_1_24;
+          ocamlPackages = pkgs.ocaml-ng.ocamlPackages_5_1;
         in
         {
           # Build ./services/web as a Go module
@@ -40,6 +42,18 @@
             buildInputs = [pkgs."go_1_24"];
           };
 
+          # Build ./services/event_source
+          event_source = ocamlPackages.buildDunePackage {
+            pname = "event_source";
+            version = "0.1.0";
+            duneVersion = "3";
+            src = ./services/event_source;
+
+            # OCaml dependencies go here
+            buildInputs = [];
+            strictDeps = true;
+          };
+
           # `nix build` with no name falls back to building web
           default = self.packages.${system}.web;
         }
@@ -48,6 +62,7 @@
       devShells = eachSystem (system:
         let 
           pkgs = nixpkgs.legacyPackages.${system};
+          ocamlPackages = pkgs.ocaml-ng.ocamlPackages_5_1;
           go = pkgs.go_1_24;
         in
         {
@@ -62,6 +77,12 @@
               gomodifytags
               gotests
               godef
+
+              # --- OCaml toolchain ---
+              ocamlPackages.ocaml # Compiler
+              ocamlPackages.dune_3 # build system
+              ocamlPackages.ocamlformat # formatter
+              ocamlPackages.ocaml-lsp # LSP server
             ];
 
             # Expose everything that the 'web' derivation builds with
@@ -78,11 +99,35 @@
           # re-use the build definition, but leave only the test phase enabled
           web-tests = self.packages.${system}.web.overrideAttrs (old: {
             name = "test-${old.pname}";
+            doCheck = true;
 
+            # Dummy install phase
             installPhase = ''
               mkdir -p $out
             '';
           });
+
+
+          # re-use the build definition, but leave only the test phase enabled
+          ocaml-tests = 
+            self.packages.${system}.event_source.overrideAttrs (old: {
+              name = "test-${old.pname}";
+              doCheck = true;
+
+              # patch Dune command to shrink log output size
+              buildPhase = ''
+                dune build --display=short
+              '';
+
+              checkPhase = ''
+                dune runtest --display=short
+              '';
+
+              # Dummy install phase
+              installPhase = ''
+                mkdir -p $out
+              '';
+            });
         }
       );
     };
