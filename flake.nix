@@ -1,79 +1,89 @@
 {
   description = "A Nix-flake-based Go 1.24 + OCAML development environment";
 
-  inputs.nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1.*.tar.gz";
+  inputs = {
+    # List of platform identifiers, e.g. "x86_64-linux" etc.
+    systems.url = "github:nix-systems/default"; 
 
-  outputs = { self, nixpkgs }:
+    # Snapshot of nixpkgs, pinned by a FlakeHub wildcard.
+    nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1.*.tar.gz";
+  };
+
+
+  # ──────────────────────────────────────────────────────────
+  # outputs : receives materialized inputs and *returns* an attr‑set
+  # ──────────────────────────────────────────────────────────
+  outputs = {self, nixpkgs, systems}:
     let
-      goVersion = 24; # Change this to update the whole stack
-
-      supportedSystems = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
-      forEachSupportedSystem = f: nixpkgs.lib.genAttrs supportedSystems (system: f {
-        pkgs = import nixpkgs {
-          inherit system;
-          overlays = [ self.overlays.default ];
-        };
-      });
+      lib = nixpkgs.lib; # Nixpkgs standard library
+      eachSystem = lib.genAttrs (import systems);
     in
     {
-      overlays.default = final: prev: {
-        go = final."go_1_${toString goVersion}";
-      };
+      packages = eachSystem (system:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+        in
+        {
+          # Build ./services/web as a Go module
+          web = pkgs.buildGoModule {
+            pname = "web";
+            version = "0.1.0";
 
-      devShells = forEachSupportedSystem ({ pkgs }: {
-        default = pkgs.mkShell {
-          packages = with pkgs; [
-            # - Go toolchain -
-            # go (version is specified by overlay)
-            go
-            gotools
-            golangci-lint
-            gopls
-            gomodifytags
-            gotests
-            gore
-            godef
+            # Source derivation relative to *this flake*
+            src = ./services/web;
 
-            # - OCaml toolchain -
-            ocaml  # OCaml compiler
-            opam # OPAM package manager
-            dune_2 # Dune build system
+            # Tell Nix to fetch and vendor all module dependencies.
+            # The first time, use a dummy SHA-256. Then copy and paste the real hash from the build error.
+            vendorHash = "sha256-ojT4jqhBXaPHZD80aiZIkL2A/cBnbPVaoOO+J3g22WY=";
 
-            # - Supporting tools - 
-            protobuf # protoc compiler
+            # We want Go 1.24; the pkg set already contains go_1_24
+            buildInputs = [pkgs."go_1_24"];
+          };
 
-            # - C-level libraries for OCaml gRPC & Protobuf plugins - 
-            pkg-config
-            grpc
-            protobufc
-            libffi
-            zlib
-            openssl
-          ];
+          # `nix build` with no name falls back to building web
+          default = self.packages.${system}.web;
+        }
+      );
 
-          shellHook = ''
-            # 1) Bootstrap OPAM non-interactively
-            if ! opam root >/dev/null 2>&1; then
-              opam init --bare --disable-sandboxing --no-setup -yes
-            fi
+      devShells = eachSystem (system:
+        let 
+          pkgs = nixpkgs.legacyPackages.${system};
+          go = pkgs.go_1_24;
+        in
+        {
+          default = pkgs.mkShell {
+            # packages placed on $PATH
+            packages = with pkgs; [
+              # --- Go toolchain ---
+              go
+              gotools
+              golangci-lint
+              gopls
+              gomodifytags
+              gotests
+              godef
+            ];
 
-            # 2) Create an "empty" local switch that picks up Nix' `ocaml`
-            if [ ! -d .opam-switch ]; then
-              opam switch create . --empty --yes
-            fi
+            # Expose everything that the 'web' derivation builds with
+            inputsFrom = [self.packages.${system}.web];
+          };
+        }
+      );
 
-            # 3) Load OPAM environment
-            eval #(opam env)
+      checks = eachSystem (system:
+        let 
+          pkgs = nixpkgs.legacyPackages.${system};
+        in
+        {
+          # re-use the build definition, but leave only the test phase enabled
+          web-tests = self.packages.${system}.web.overrideAttrs (old: {
+            name = "test-${old.pname}";
 
-            # 4) Install OCaml dependencies if they're missing
-            if ! ocaml list --installed | grep -q grpc-lwc; then
-              opam install --yes yojson lwt grpc-lwt grpc ocaml-protoc-plugin
-            fi
-
-            # 5) Make sure ocaml-protoc-plugin (and any other OPAM tools) are on PATH
-            export PATH=$PATH:$(opam var bin)
-          '';
-        };
-      });
+            installPhase = ''
+              mkdir -p $out
+            '';
+          });
+        }
+      );
     };
 }

@@ -1,5 +1,6 @@
 .direnv
 data
+result
 
 # gitignore.io for Go
 # Created by https://www.toptal.com/developers/gitignore/api/go
