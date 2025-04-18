@@ -23,7 +23,7 @@
         let
           pkgs = nixpkgs.legacyPackages.${system};
           go = pkgs.go_1_24;
-          ocamlPackages = pkgs.ocaml-ng.ocamlPackages_5_1;
+          ocamlPackages = pkgs.ocaml-ng.ocamlPackages_5_2;
         in
         {
           # Build ./services/web as a Go module
@@ -50,7 +50,9 @@
             src = ./services/event_source;
 
             # OCaml dependencies go here
-            buildInputs = [];
+            buildInputs = [
+              ocamlPackages.alcotest # testing
+            ];
             strictDeps = true;
           };
 
@@ -62,7 +64,7 @@
       devShells = eachSystem (system:
         let 
           pkgs = nixpkgs.legacyPackages.${system};
-          ocamlPackages = pkgs.ocaml-ng.ocamlPackages_5_1;
+          ocamlPackages = pkgs.ocaml-ng.ocamlPackages_5_2;
           go = pkgs.go_1_24;
         in
         {
@@ -83,10 +85,14 @@
               ocamlPackages.dune_3 # build system
               ocamlPackages.ocamlformat # formatter
               ocamlPackages.ocaml-lsp # LSP server
+              ocamlPackages.alcotest
             ];
 
             # Expose everything that the 'web' derivation builds with
-            inputsFrom = [self.packages.${system}.web];
+            inputsFrom = [
+              self.packages.${system}.web
+              self.packages.${system}.event_source
+            ];
           };
         }
       );
