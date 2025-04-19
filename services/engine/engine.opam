@@ -28,4 +28,4 @@ build: [
     "@doc" {with-doc}
   ]
 ]
-dev-repo: "git+https://github.com/username/reponame.git"
+dev-repo: "git+https://github.com/hoodnoah/ghoam.git"

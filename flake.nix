@@ -6,7 +6,8 @@
     systems.url = "github:nix-systems/default"; 
 
     # Snapshot of nixpkgs, pinned by a FlakeHub wildcard.
-    nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1.*.tar.gz";
+    # nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1.*.tar.gz";
+    nixpkgs.url = "nixpkgs/nixos-unstable";
   };
 
 
@@ -24,6 +25,8 @@
           pkgs = nixpkgs.legacyPackages.${system};
           go = pkgs.go_1_24;
           ocamlPackages = pkgs.ocaml-ng.ocamlPackages_5_2;
+          coq = pkgs.coq_8_20;
+          coqPackages = pkgs.coqPackages_8_20;
         in
         {
           # Build ./services/web as a Go module
@@ -42,12 +45,12 @@
             buildInputs = [pkgs."go_1_24"];
           };
 
-          # Build ./services/event_source
-          event_source = ocamlPackages.buildDunePackage {
-            pname = "event_source";
+          # Build ./services/engine
+          engine = ocamlPackages.buildDunePackage {
+            pname = "engine";
             version = "0.1.0";
             duneVersion = "3";
-            src = ./services/event_source;
+            src = ./services/engine;
 
             # OCaml dependencies go here
             buildInputs = [
@@ -66,6 +69,8 @@
           pkgs = nixpkgs.legacyPackages.${system};
           ocamlPackages = pkgs.ocaml-ng.ocamlPackages_5_2;
           go = pkgs.go_1_24;
+	  coq = pkgs.coq_8_20;
+	  coqPackages = pkgs.coqPackages_8_20;
         in
         {
           default = pkgs.mkShell {
@@ -86,12 +91,16 @@
               ocamlPackages.ocamlformat # formatter
               ocamlPackages.ocaml-lsp # LSP server
               ocamlPackages.alcotest
-            ];
+
+              # --- rocq toolchain ---
+              coq # compiler
+	      coqPackages.coq-lsp 
+	    ];
 
             # Expose everything that the 'web' derivation builds with
             inputsFrom = [
               self.packages.${system}.web
-              self.packages.${system}.event_source
+              self.packages.${system}.engine
             ];
           };
         }
@@ -116,7 +125,7 @@
 
           # re-use the build definition, but leave only the test phase enabled
           ocaml-tests = 
-            self.packages.${system}.event_source.overrideAttrs (old: {
+            self.packages.${system}.engine.overrideAttrs (old: {
               name = "test-${old.pname}";
               doCheck = true;
 

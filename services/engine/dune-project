@@ -1,23 +1,23 @@
 (lang dune 3.17)
 
-(name event_source)
+(name engine)
 
 (generate_opam_files true)
 
 (source
- (github username/reponame))
+ (github hoodnoah/ghoam))
 
-(authors "Author Name <author@example.com>")
+(authors "Noah Hood <hoodnoah@icloud.com>")
 
-(maintainers "Maintainer Name <maintainer@example.com>")
+(maintainers "Noah Hood <hoodnoah@icloud.com>")
 
-(license LICENSE)
+(license MIT)
 
 (documentation https://url/to/documentation)
 
 (package
  (name event_source)
- (synopsis "A short synopsis")
+ (synopsis "A double-entry accounting engine leveraging event sourcing")
  (description "A longer description")
  (depends ocaml)
  (tags
