@@ -6,7 +6,6 @@
     systems.url = "github:nix-systems/default"; 
 
     # Snapshot of nixpkgs, pinned by a FlakeHub wildcard.
-    # nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1.*.tar.gz";
     nixpkgs.url = "nixpkgs/nixos-unstable";
   };
 
@@ -25,8 +24,6 @@
           pkgs = nixpkgs.legacyPackages.${system};
           go = pkgs.go_1_24;
           ocamlPackages = pkgs.ocaml-ng.ocamlPackages_5_2;
-          coq = pkgs.coq_8_20;
-          coqPackages = pkgs.coqPackages_8_20;
         in
         {
           # Build ./services/web as a Go module
@@ -69,33 +66,29 @@
           pkgs = nixpkgs.legacyPackages.${system};
           ocamlPackages = pkgs.ocaml-ng.ocamlPackages_5_2;
           go = pkgs.go_1_24;
-	  coq = pkgs.coq_8_20;
-	  coqPackages = pkgs.coqPackages_8_20;
         in
         {
           default = pkgs.mkShell {
-            # packages placed on $PATH
-            packages = with pkgs; [
-              # --- Go toolchain ---
-              go
-              gotools
-              golangci-lint
-              gopls
-              gomodifytags
-              gotests
-              godef
+          dontDetectOcamlConflicts = true;
 
-              # --- OCaml toolchain ---
-              ocamlPackages.ocaml # Compiler
-              ocamlPackages.dune_3 # build system
-              ocamlPackages.ocamlformat # formatter
-              ocamlPackages.ocaml-lsp # LSP server
-              ocamlPackages.alcotest
+          # packages placed on $PATH
+          packages = with pkgs; [
+            # --- Go toolchain ---
+            go
+            gotools
+            golangci-lint
+            gopls
+            gomodifytags
+            gotests
+            godef
 
-              # --- rocq toolchain ---
-              coq # compiler
-	      coqPackages.coq-lsp 
-	    ];
+            # --- OCaml toolchain ---
+            ocamlPackages.ocaml # Compiler
+            ocamlPackages.dune_3 # build system
+            ocamlPackages.ocamlformat # formatter
+            ocamlPackages.ocaml-lsp # LSP server
+            ocamlPackages.alcotest
+          ];
 
             # Expose everything that the 'web' derivation builds with
             inputsFrom = [
