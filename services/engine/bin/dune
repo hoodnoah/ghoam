@@ -1,4 +1,4 @@
 (executable
- (public_name event_source)
+ (public_name engine)
  (name main)
- (libraries event_source))
+ (libraries engine ptime ptime.clock))

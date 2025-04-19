@@ -16,10 +16,10 @@
 (documentation https://url/to/documentation)
 
 (package
- (name event_source)
+ (name engine)
  (synopsis "A double-entry accounting engine leveraging event sourcing")
  (description "A longer description")
- (depends ocaml)
+ (depends ocaml alcotest qcheck)
  (tags
   ("add topics" "to describe" your project)))
 

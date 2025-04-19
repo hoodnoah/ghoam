@@ -87,7 +87,9 @@
             ocamlPackages.dune_3 # build system
             ocamlPackages.ocamlformat # formatter
             ocamlPackages.ocaml-lsp # LSP server
-            ocamlPackages.alcotest
+            ocamlPackages.alcotest # testing library
+            ocamlPackages.qcheck  # property-based testing library
+            ocamlPackages.ptime # time library
           ];
 
             # Expose everything that the 'web' derivation builds with

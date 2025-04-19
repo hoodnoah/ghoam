@@ -1,0 +1,4 @@
+(test
+ (name journal_entry_test)
+ (modules journal_entry_test)
+ (libraries engine qcheck ptime))

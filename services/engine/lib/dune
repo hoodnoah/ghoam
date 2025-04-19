@@ -1,2 +1,4 @@
 (library
- (name event_source))
+ (name engine)
+ (modules accounting_types journal_entry)
+ (libraries ptime ptime.clock))
